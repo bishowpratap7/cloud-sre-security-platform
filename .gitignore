@@ -1,0 +1,47 @@
+# Build outputs
+target/
+dist/
+build/
+node_modules/
+*.class
+*.jar
+!target/*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+!test/**/*.key
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+terraform/.terraform.lock.hcl
+
+# Local runtime
+*.log
+data/
+.kube/
+minikube/
+kind/
+
+# Tooling
+.semgrep_cache
+.grype_db
+trivy-cache/

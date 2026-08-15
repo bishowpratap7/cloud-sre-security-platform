@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: sre-platform
+  labels:
+    app: prometheus
+    app.kubernetes.io/part-of: observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["alertmanager:9093"]
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      - job_name: payments-api
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["payments-api:8080"]
+            labels:
+              service: payments-api
+      - job_name: orders-api
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["orders-api:8080"]
+            labels:
+              service: orders-api
+      - job_name: incident-engine
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ["incident-engine:8080"]
+            labels:
+              service: incident-engine
+      - job_name: otel-collector
+        static_configs:
+          - targets: ["otel-collector:9464"]
+  slo-alerts.yml: |
+    groups:
+      - name: slo.rules
+        rules:
+          - alert: HighErrorRate
+            expr: |
+              sum by (service) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+              / on(service) sum by (service) (rate(http_server_requests_seconds_count[5m])) > 0.20
+            for: 2m
+            labels:
+              severity: critical
+              slo: availability
+            annotations:
+              summary: "{{ $labels.service }} error rate above 20%"
+              description: "{{ $labels.service }} error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          - alert: HighLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum by (service, le) (rate(http_server_requests_seconds_bucket[5m]))
+              ) > 1.5
+            for: 2m
+            labels:
+              severity: warning
+              slo: latency
+            annotations:
+              summary: "{{ $labels.service }} p95 latency above 1.5s"
+              description: "{{ $labels.service }} p95 latency is {{ $value }}s over the last 5 minutes."
+          - alert: ServiceUnavailable
+            expr: up{service="payments-api"} == 0 or up{service="orders-api"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.service }} is down"

@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: incident-engine
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+
+app:
+  # name=url,replicas,version pairs separated by ';'
+  monitored-services: ${MONITORED_SERVICES:}
+  poll-interval-ms: 5000
+  detect-after-polls: 2
+  clear-after-polls: 3
+  thresholds:
+    error-rate: 20.0
+    latency-ms: 1500.0
+  observability:
+    metrics-source: "Prometheus (http_server_requests_total)"
+    traces-source: "OpenTelemetry (OTLP)"
+    logs-source: "Loki / OpenSearch"
+
+logging:
+  level:
+    com.sreplatform: INFO

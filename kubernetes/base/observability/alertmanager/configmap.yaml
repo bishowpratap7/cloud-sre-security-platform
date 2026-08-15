@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: sre-platform
+  labels:
+    app: alertmanager
+    app.kubernetes.io/part-of: observability
+data:
+  alertmanager.yml: |
+    route:
+      receiver: sre-command
+      group_by: [alertname, service]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+    receivers:
+      - name: sre-command
+        webhook_configs:
+          - url: http://incident-engine:8080/incidents
+            send_resolved: false

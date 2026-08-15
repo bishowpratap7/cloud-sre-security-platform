@@ -1,0 +1,164 @@
+# =====================================================================
+# cloud-sre-security-platform — local stack
+# Runs the full platform on a single host with Docker Compose.
+#
+#   docker compose up --build
+#
+# Production parity is documented in docs/architecture.md — this stack
+# is the "local simulator" of the EKS deployment in kubernetes/.
+# =====================================================================
+name: sre-platform
+
+services:
+  # ------------------------------------------------------------------
+  # Business services (Spring Boot / Java 21)
+  # ------------------------------------------------------------------
+  payments-api:
+    build:
+      context: services/payments-api
+    image: sre/payments-api:local
+    container_name: payments-api
+    depends_on:
+      otel-collector:
+        condition: service_started
+    environment:
+      SERVER_PORT: "8080"
+      APP_VERSION: "1.8.3"
+      SPRING_APPLICATION_NAME: payments-api
+      SPRING_LIFECYCLE_TIMEOUT-PER-SHUTDOWN-PHASE: "20s"
+      DESTINATION_URL: "http://orders-api:8080"
+      # OpenTelemetry (Java agent) -> OTLP HTTP -> collector
+      OTEL_SERVICE_NAME: "payments-api"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_METRICS_EXPORTER: "otlp"
+      OTEL_LOGS_EXPORTER: "otlp"
+      # Prometheus scraper also reaches micrometer directly on 8080
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  orders-api:
+    build:
+      context: services/orders-api
+    image: sre/orders-api:local
+    container_name: orders-api
+    depends_on:
+      otel-collector:
+        condition: service_started
+    environment:
+      SERVER_PORT: "8080"
+      APP_VERSION: "2.4.1"
+      SPRING_APPLICATION_NAME: orders-api
+      OTEL_SERVICE_NAME: "orders-api"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  # ------------------------------------------------------------------
+  # Incident engine — correlates health/metrics and drives playbooks
+  # ------------------------------------------------------------------
+  incident-engine:
+    build:
+      context: services/incident-engine
+    image: sre/incident-engine:local
+    container_name: incident-engine
+    depends_on:
+      payments-api:
+        condition: service_healthy
+      orders-api:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_APPLICATION_NAME: incident-engine
+      MONITORED_SERVICES: "payments-api=http://payments-api:8080,6,1.8.3;orders-api=http://orders-api:8080,3,2.4.1"
+      OTEL_SERVICE_NAME: "incident-engine"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  # ------------------------------------------------------------------
+  # Observability
+  # ------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./observability/otel-collector/config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP/gRPC
+      - "4318:4318"   # OTLP/HTTP
+      - "9464:9464"   # collector metrics (scraped by Prometheus)
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    depends_on:
+      - otel-collector
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts/slo-alerts.yml:/etc/prometheus/alerts.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    ports:
+      - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    volumes:
+      - ./observability/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    ports:
+      - "9093:9093"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+  # ------------------------------------------------------------------
+  # Web dashboard (React, served by nginx)
+  # ------------------------------------------------------------------
+  dashboard:
+    build:
+      context: dashboard
+    image: sre/dashboard:local
+    container_name: dashboard
+    depends_on:
+      incident-engine:
+        condition: service_healthy
+    ports:
+      - "8080:80"

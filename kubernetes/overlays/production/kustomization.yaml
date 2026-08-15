@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: sre-platform-production
+namespace: sre-platform
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+      name: payments-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 6
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints
+        value:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app: payments-api
+  - target:
+      kind: Deployment
+      name: orders-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3

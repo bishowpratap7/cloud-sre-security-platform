@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: sre-platform-base
+namespace: sre-platform
+
+resources:
+  - namespace.yaml
+  - networkpolicy-default.yaml
+  - app-networkpolicies.yaml
+  - payments-api/deployment.yaml
+  - payments-api/service.yaml
+  - payments-api/hpa.yaml
+  - payments-api/pdb.yaml
+  - payments-api/networkpolicy.yaml
+  - orders-api/deployment.yaml
+  - orders-api/service.yaml
+  - orders-api/pdb.yaml
+  - incident-engine/deployment.yaml
+  - incident-engine/service.yaml
+  - dashboard/deployment.yaml
+  - dashboard/service.yaml
+  - observability/otel-collector/configmap.yaml
+  - observability/otel-collector/deployment.yaml
+  - observability/otel-collector/service.yaml
+  - observability/prometheus/configmap.yaml
+  - observability/prometheus/deployment.yaml
+  - observability/prometheus/service.yaml
+  - observability/alertmanager/configmap.yaml
+  - observability/alertmanager/deployment.yaml
+  - observability/alertmanager/service.yaml
+  - observability/grafana/datasources.yaml
+  - observability/grafana/dashboard-providers.yaml
+  - observability/grafana/dashboard-files.yaml
+  - observability/grafana/deployment.yaml
+  - observability/grafana/service.yaml
+  - observability/networkpolicies.yaml
+
+images:
+  - name: ghcr.io/sre-platform/payments-api
+    newName: ghcr.io/sre-platform/payments-api
+  - name: ghcr.io/sre-platform/orders-api
+    newName: ghcr.io/sre-platform/orders-api
+  - name: ghcr.io/sre-platform/incident-engine
+    newName: ghcr.io/sre-platform/incident-engine
+  - name: ghcr.io/sre-platform/dashboard
+    newName: ghcr.io/sre-platform/dashboard

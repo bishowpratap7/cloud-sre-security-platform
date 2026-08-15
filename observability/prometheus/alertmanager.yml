@@ -1,0 +1,14 @@
+route:
+  receiver: sre-command
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  # Best-effort demo wiring: pushes an incident into the incident engine.
+  # In production replace with PagerDuty / Opsgenie / Slack.
+  - name: sre-command
+    webhook_configs:
+      - url: http://incident-engine:8080/incidents
+        send_resolved: false

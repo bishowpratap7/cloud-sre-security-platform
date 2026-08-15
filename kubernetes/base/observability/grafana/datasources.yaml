@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: sre-platform
+  labels:
+    app: grafana
+    app.kubernetes.io/part-of: observability
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        editable: false
+      - name: OpenTelemetry
+        type: tempo
+        access: proxy
+        url: http://otel-collector:4318
+        jsonData:
+          httpMethod: POST
+          serviceMap:
+            datasourceUid: Prometheus
