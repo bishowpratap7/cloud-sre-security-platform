@@ -1,4 +1,4 @@
-# Learn SRE & Cloud Security by Breaking Production (On Purpose)
+# Learn SRE & Cloud Security by Breaking Local "Production" On Your Laptop (On Purpose)
 
 > **Author: Bishow Pandey** — built as an educational platform so anyone can
 > learn Site Reliability Engineering, cloud security, and modern DevOps by
