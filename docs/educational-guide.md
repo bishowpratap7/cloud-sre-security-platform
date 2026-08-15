@@ -94,6 +94,11 @@ Think of it as a loop:
 
 > On Windows, run the commands below in **PowerShell**; on macOS/Linux use a
 > terminal. Docker Desktop must be running.
+>
+> **Windows shortcut:** double-click **`run.bat`** instead — a menu-driven
+> launcher with options to start the Docker stack, run everything locally
+> without Docker (Java jars + Vite dev on `:5173`), stop, or check status.
+> If one service fails to start, it warns you and continues with the rest.
 
 ## 5. Run it (5-minute quick start)
 

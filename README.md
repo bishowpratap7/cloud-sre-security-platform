@@ -72,6 +72,24 @@ make demo-reset         # clear any remaining faults
 
 Run the whole thing from the dashboard at http://localhost:8080.
 
+## Windows quick start (`run.bat`)
+
+On Windows, double-click **`run.bat`** (or run it from a terminal) for a
+menu-driven launcher that needs no Make/git-bash:
+
+| Option | What it does |
+|---|---|
+| `1` | Full stack via Docker Compose (services + observability + dashboard) |
+| `2` | Local, no Docker — builds the Java services, opens each one in its own console, starts the Vite dev dashboard on `:5173` |
+| `3` | Stop everything (compose stack + Java + Vite) |
+| `4` | Status of every service |
+| `5` | Exit |
+
+**Continue-on-failure:** if any service fails to start, the launcher prints a
+warning and still starts the remaining services; the startup summary reports
+how many of the 4 responded (all opened service consoles stay visible so you
+can read the error). Option `2` runs the same commands documented below.
+
 ## Local Kubernetes (Kind)
 
 ```bash
@@ -103,6 +121,7 @@ services/
   orders-api/          # downstream dependency
   incident-engine/     # detection + playbooks + rollback
 dashboard/             # React/Vite incident-command UI (nginx)
+run.bat                # Windows launcher (menu: compose / local / stop / status)
 kubernetes/            # base + kind/production overlays (probes, HPA, PDB,
                        # NetworkPolicy, prometheus rules, grafana, collector)
 observability/         # compose-mounted configs (otel, prometheus, alertmanager, grafana)
